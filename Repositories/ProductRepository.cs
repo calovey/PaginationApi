@@ -13,24 +13,34 @@ namespace PaginationApi.Repositories
             _connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
-        public async Task<(IEnumerable<Product> Products, int TotalCount)> GetPaginatedProductsAsync(int pageNumber, int pageSize)
+        public async Task<(IEnumerable<Product> Products, int TotalCount)> GetPaginatedProductsAsync(int pageNumber, int pageSize, string sortField, string sortDirection)
         {
             var products = new List<Product>();
             int totalCount = 0;
+
+            var validFields = new[] { "ProductId", "CreatedDate" };
+            var validDirections = new[] { "asc", "desc" };
 
             using (var connection = new SqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
 
-                using (var command = new SqlCommand("sp_GetProductsPaginated", connection))
+
+                var sql = $@"SELECT ProductId, ProductName, Price, CreatedDate
+                             FROM Products
+                             ORDER BY {sortField} {sortDirection}
+                             OFFSET (@PageNumber - 1) * @PageSize ROWS
+                             FETCH NEXT @PageSize ROWS ONLY;
+                             SELECT COUNT(*) FROM Products;";
+
+
+                using (var command = new SqlCommand(sql, connection))
                 {
-                    command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.AddWithValue("@PageNumber", pageNumber);
                     command.Parameters.AddWithValue("@PageSize", pageSize);
 
                     using (var reader = await command.ExecuteReaderAsync())
                     {
-                        // İlk resultset: Ürünler
                         while (await reader.ReadAsync())
                         {
                             products.Add(new Product
@@ -42,7 +52,6 @@ namespace PaginationApi.Repositories
                             });
                         }
 
-                        // İkinci resultset: Toplam sayı
                         await reader.NextResultAsync();
                         if (await reader.ReadAsync())
                         {

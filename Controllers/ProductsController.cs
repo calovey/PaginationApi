@@ -15,12 +15,12 @@ namespace PaginationApi.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetProducts([FromQuery] int page = 1, [FromQuery] int size = 10)
+        public async Task<IActionResult> GetProducts([FromQuery] int page = 1, [FromQuery] int size = 10, [FromQuery] string sortField = "ProductId", [FromQuery] string sortDirection = "asc")
         {
             if (page < 1 || size < 1)
                 return BadRequest("Page and size must be greater than 0");
 
-            var (products, totalCount) = await _repository.GetPaginatedProductsAsync(page, size);
+            var (products, totalCount) = await _repository.GetPaginatedProductsAsync(page, size, sortField, sortDirection);
 
             var response = new
             {
